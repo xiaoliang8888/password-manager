@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 /**
@@ -7,7 +7,10 @@ import prisma from '@/lib/prisma';
  * @param {{ params: { id: string } }} { params } - 包含动态路由参数的对象，这里是密码记录的 ID
  * @returns {Promise<NextResponse>} 返回成功或失败的 JSON 响应
  */
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   // 从动态路由参数中获取要删除的密码记录的 ID
   const id = params.id;
 
