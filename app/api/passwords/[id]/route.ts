@@ -9,10 +9,10 @@ import prisma from '@/lib/prisma';
  */
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   // 从动态路由参数中获取要删除的密码记录的 ID
-  const id = context.params.id;
+  const { id } = await context.params;
 
   try {
     // 使用 Prisma Client 从数据库中删除指定 ID 的 PasswordEntry 记录
