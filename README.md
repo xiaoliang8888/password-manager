@@ -72,6 +72,102 @@ npm run dev
 - **数据库**: [PostgreSQL](https://www.postgresql.org/)
 - **通知/提示**: [Sonner](https://sonner.emilkowal.ski/)
 
+## API 端点
+
+以下是本应用提供的 API 端点及其详细说明。
+
+### 密码管理 (Passwords)
+
+#### 1. 获取所有密码
+
+- **端点**: `GET /api/passwords`
+- **描述**: 获取所有已保存的密码记录。
+- **成功响应** (状态码 `200`):
+  ```json
+  [
+    {
+      "id": "clx1y2b3c0000d8v9e7f6h5g4",
+      "website": "example.com",
+      "username": "user@example.com",
+      "password": "password123"
+    }
+  ]
+  ```
+
+#### 2. 新增密码
+
+- **端点**: `POST /api/passwords`
+- **描述**: 创建一条新的密码记录。
+- **请求体**:
+  ```json
+  {
+    "website": "newsite.com",
+    "username": "newuser",
+    "password": "newpassword456"
+  }
+  ```
+- **成功响应** (状态码 `201`):
+  ```json
+  {
+    "id": "clx1y3d4e0001d8v9a2b3c4d5",
+    "website": "newsite.com",
+    "username": "newuser",
+    "password": "newpassword456"
+  }
+  ```
+
+#### 3. 删除密码
+
+- **端点**: `DELETE /api/passwords/[id]`
+- **描述**: 根据指定的 `id` 删除一条密码记录。
+- **URL 参数**:
+  - `id` (string, required): 要删除的密码记录的唯一标识符。
+- **成功响应**: 状态码 `204` (No Content)，无返回内容。
+- **失败响应** (状态码 `500`):
+  ```json
+  {
+    "error": "无法删除密码"
+  }
+  ```
+
+### 用户认证 (Authentication)
+
+#### 1. 用户注册
+
+- **端点**: `POST /api/auth/register`
+- **描述**: 注册一个新用户。
+- **请求体**:
+  ```json
+  {
+    "username": "testuser",
+    "password": "password123"
+  }
+  ```
+- **成功响应** (状态码 `201`):
+  ```json
+  {
+    "message": "用户创建成功"
+  }
+  ```
+
+#### 2. 用户登录
+
+- **端点**: `POST /api/auth/login`
+- **描述**: 用户登录以获取访问令牌。
+- **请求体**:
+  ```json
+  {
+    "username": "testuser",
+    "password": "password123"
+  }
+  ```
+- **成功响应** (状态码 `200`):
+  ```json
+  {
+    "token": "your-jwt-token"
+  }
+  ```
+
 ## 展望
 
 我们已经成功地将数据存储后端切换为 PostgreSQL 数据库，实现了数据的持久化存储。
