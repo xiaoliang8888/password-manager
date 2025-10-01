@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation'; // 导入导航员
+import { useSession, signOut } from 'next-auth/react'; // 导入 NextAuth 的会话管理函数
 import { toast } from "sonner";
 import {
   Table,
@@ -35,16 +36,21 @@ interface Password {
 
 export default function HomePage() {
   const router = useRouter(); // 初始化导航员
+  const { data: session, status } = useSession(); // 获取用户会话信息和状态
   const [passwords, setPasswords] = useState<Password[]>([]);
   const [open, setOpen] = useState(false);
   const [newPassword, setNewPassword] = useState({ website: "", username: "", password: "" });
-  const [isLoading, setIsLoading] = useState(true); // 添加一个加载状态，用于身份验证
 
   // 定义获取密码列表的函数
   const fetchPasswords = async () => {
     try {
       const response = await fetch('/api/passwords');
       if (!response.ok) {
+        if (response.status === 401) {
+          // 如果返回 401 未授权，说明用户未登录
+          router.push('/auth');
+          return;
+        }
         throw new Error('获取密码列表失败');
       }
       const data = await response.json();
@@ -56,16 +62,19 @@ export default function HomePage() {
 
   // 在组件首次加载时，检查用户是否登录
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      // 如果没有通行证，就导航到登录页面
-      router.push('/auth');
-    } else {
-      // 如果有通行证，就获取密码列表并关闭加载状态
-      fetchPasswords();
-      setIsLoading(false);
+    if (status === 'loading') {
+      // 正在加载会话信息，等待
+      return;
     }
-  }, [router]);
+    
+    if (status === 'unauthenticated') {
+      // 用户未登录，跳转到登录页面
+      router.push('/auth');
+    } else if (status === 'authenticated') {
+      // 用户已登录，获取密码列表
+      fetchPasswords();
+    }
+  }, [status, router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -106,9 +115,9 @@ export default function HomePage() {
     toast.success("密码已复制到剪贴板！");
   };
 
-    const handleLogout = () => {
-    // 从浏览器中移除通行证
-    localStorage.removeItem('token');
+    const handleLogout = async () => {
+    // 使用 NextAuth 的 signOut 函数退出登录
+    await signOut({ redirect: false });
     toast.success('您已成功退出登录');
     // 导航回登录页面
     router.push('/auth');
@@ -133,12 +142,17 @@ export default function HomePage() {
   };
 
   // 在身份验证完成前，显示一个加载提示
-  if (isLoading) {
+  if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>正在验证身份...</p>
       </div>
     );
+  }
+
+  // 如果用户未登录，不显示任何内容（会被重定向到登录页面）
+  if (status === 'unauthenticated') {
+    return null;
   }
 
   return (

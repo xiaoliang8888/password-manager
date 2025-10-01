@@ -2,6 +2,8 @@
 'use client';
 
 import { useState } from 'react';
+import { signIn } from 'next-auth/react'; // 导入 NextAuth 的登录函数
+import { useRouter } from 'next/navigation'; // 导入路由导航工具
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,54 +11,71 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 // 这是我们的登录/注册页面组件
 export default function AuthPage() {
-  // 使用一个状态来切换是“登录”模式还是“注册”模式
+  const router = useRouter(); // 初始化路由导航工具
+  
+  // 使用一个状态来切换是"登录"模式还是"注册"模式
   const [isLogin, setIsLogin] = useState(true);
-  // 用来存储用户输入的用户名
-  const [username, setUsername] = useState('');
+  // 用来存储用户输入的邮箱
+  const [email, setEmail] = useState('');
   // 用来存储用户输入的密码
   const [password, setPassword] = useState('');
   // 用来显示操作结果或错误信息
   const [message, setMessage] = useState('');
+  // 用来显示加载状态
+  const [isLoading, setIsLoading] = useState(false);
 
   // 处理表单提交的函数（无论是登录还是注册）
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // 防止页面刷新
     setMessage(''); // 清空上一条消息
-
-    // 根据当前是登录还是注册，选择不同的后台服务地址
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+    setIsLoading(true); // 开始加载
 
     try {
-      // 向我们之前创建的后台服务发送请求
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      if (isLogin) {
+        // 登录模式:使用 NextAuth 的 signIn 函数
+        const result = await signIn('credentials', {
+          email,
+          password,
+          redirect: false, // 不自动跳转,我们手动控制
+        });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // 如果后台返回错误，就显示错误信息
-        setMessage(data.message || '操作失败');
-      } else {
-        if (isLogin) {
-          // 如果是登录成功，后台会返回一个“通行证” (token)
+        if (result?.error) {
+          // 如果登录失败,显示错误信息
+          setMessage(result.error);
+        } else if (result?.ok) {
+          // 如果登录成功,显示成功消息并跳转到主页
           setMessage('登录成功！');
-          // 我们把通行证存到浏览器的 localStorage 里，就像给用户盖了个“已入场”的章
-          localStorage.setItem('token', data.token);
-          // 1秒后跳转到主页
           setTimeout(() => {
-            window.location.href = '/';
-          }, 1000);
+            router.push('/');
+            router.refresh(); // 刷新页面以更新会话状态
+          }, 500);
+        }
+      } else {
+        // 注册模式:调用我们的注册 API
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          // 如果注册失败,显示错误信息
+          setMessage(data.message || '注册失败');
         } else {
-          // 如果是注册成功，提示用户，并切换到登录模式
+          // 如果注册成功,提示用户并切换到登录模式
           setMessage('注册成功！请登录。');
-          setIsLogin(true);
+          setTimeout(() => {
+            setIsLogin(true);
+            setMessage('');
+          }, 1500);
         }
       }
     } catch (error) {
       setMessage('网络错误，请稍后再试');
+    } finally {
+      setIsLoading(false); // 结束加载
     }
   };
 
@@ -72,14 +91,15 @@ export default function AuthPage() {
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="username">用户名</Label>
+              <Label htmlFor="email">邮箱</Label>
               <Input
-                id="username"
-                type="text"
-                placeholder="请输入用户名"
+                id="email"
+                type="email"
+                placeholder="请输入邮箱"
                 required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div className="grid gap-2">
@@ -91,13 +111,14 @@ export default function AuthPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             {message && <p className={`text-sm ${message.includes('成功') ? 'text-green-500' : 'text-red-500'}`}>{message}</p>}
           </CardContent>
           <CardFooter className="flex flex-col">
-            <Button className="w-full" type="submit">
-              {isLogin ? '登录' : '注册'}
+            <Button className="w-full" type="submit" disabled={isLoading}>
+              {isLoading ? '处理中...' : (isLogin ? '登录' : '注册')}
             </Button>
             <p className="mt-4 text-xs text-center text-muted-foreground">
               {isLogin ? '还没有帐户？' : '已经有帐户了？'}
