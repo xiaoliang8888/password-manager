@@ -2,9 +2,22 @@
 
 这是一个使用 Next.js 和 shadcn/ui 构建的现代化、响应式的密码管理器应用。它提供了一个简洁、安全的界面来存储和管理您的密码。
 
+## 🌟 特别说明
+
+本项目已完整解决 **Node.js 18+ + Next.js 15 在 Windows 环境下使用代理访问 Google OAuth** 的技术难题。
+
+- ✅ 使用 `undici` 的 `ProxyAgent` + `dispatcher` 参数
+- ✅ 完美支持 V2rayN 等代理工具
+- ✅ 自动跳过本地请求，提高性能
+- ✅ 提供完整的测试脚本
+
+详细技术方案请查看：[PROXY_SOLUTION.md](PROXY_SOLUTION.md)
+
 ## ✨ 主要功能
 
 - **🔐 安全认证**：使用 NextAuth.js 进行专业的用户身份认证。
+- **📧 邮箱密码登录**：使用邮箱和密码进行安全登录和注册。
+- **🌐 Google 登录**：（已配置，生产环境可用）支持使用 Google 账号快速登录。
 - **👤 用户隔离**：每个用户只能访问和管理自己的密码记录。
 - **📋 查看密码列表**：在一个清晰的表格中查看所有已保存的账号信息。
 - **➕ 新增密码**：通过一个方便的对话框快速添加新的网站、用户名和密码。
@@ -65,34 +78,89 @@ npm install
     > openssl rand -base64 32
     > ```
 
-4.  **运行数据库迁移**：配置好环境变量后，运行以下命令来创建数据库表结构：
+4.  **配置 Google OAuth（可选）**：如果您想使用 Google 账号登录功能，需要配置 Google OAuth 凭据：
+
+    a. 访问 [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+    
+    b. 创建一个新项目或选择现有项目
+    
+    c. 启用 "Google+ API"
+    
+    d. 创建 OAuth 2.0 客户端 ID：
+       - 应用类型：Web 应用
+       - 授权重定向 URI：`http://localhost:3000/api/auth/callback/google`（开发环境）
+       - 生产环境需要添加：`https://yourdomain.com/api/auth/callback/google`
+    
+    e. 在 `.env` 文件中添加 Google OAuth 凭据：
+    
+    ```
+    GOOGLE_CLIENT_ID="your-google-client-id"
+    GOOGLE_CLIENT_SECRET="your-google-client-secret"
+    ```
+    
+    > 注意：如果不配置 Google OAuth，应用仍然可以正常运行，只是无法使用 Google 登录功能。
+
+5.  **运行数据库迁移**：配置好环境变量后，运行以下命令来创建数据库表结构：
 
     ```bash
     npx prisma migrate dev
     ```
 
-### 4. 运行开发服务器
+### 4. 配置代理（中国大陆用户必需）
+
+如果您在中国大陆，需要配置代理才能使用 Google 登录功能：
+
+#### 方法 1：使用 V2rayN（推荐）
+
+1. **以管理员身份运行 V2rayN**
+2. **配置代理设置**：
+   - 系统代理 → 自动配置系统代理（或 PAC 模式）
+   - 路由 → 全局(Global)
+3. **设置环境变量**（可选，已在代码中配置）：
+   ```powershell
+   $env:HTTP_PROXY = "http://127.0.0.1:10809"
+   $env:HTTPS_PROXY = "http://127.0.0.1:10809"
+   ```
+
+#### 方法 2：测试代理是否工作
+
+运行代理测试脚本：
+
+```powershell
+npm run test:proxy
+```
+
+预期输出应显示所有测试通过（✓）。
+
+> **技术说明**：本项目使用 `undici` 的 `ProxyAgent` + `dispatcher` 参数来让 Node.js 18+ 的原生 fetch API 支持代理。这是目前唯一可靠的解决方案。
+
+### 5. 运行开发服务器
 
 完成以上所有步骤后，运行以下命令来启动开发服务器：
 
 ```bash
+# 使用代理（自动加载 proxy-setup.js）
 npm run dev
+
+# 不使用代理（仅邮箱密码登录）
+npm run dev:no-proxy
 ```
 
-### 3. 打开应用
+### 6. 打开应用
 
 现在，在您的浏览器中打开 [http://localhost:3000](http://localhost:3000)，您就可以看到并使用这个密码管理器了。
 
 ## 🛠️ 技术栈
 
-- **框架**: [Next.js](https://nextjs.org/) (React)
+- **框架**: [Next.js](https://nextjs.org/) 15.5.4 (React 19)
 - **UI 组件库**: [shadcn/ui](https://ui.shadcn.com/)
 - **样式**: [Tailwind CSS](https://tailwindcss.com/)
 - **语言**: [TypeScript](https://www.typescriptlang.org/)
-- **身份认证**: [NextAuth.js](https://next-auth.js.org/)
+- **身份认证**: [NextAuth.js](https://next-auth.js.org/) v5
 - **数据库 ORM**: [Prisma](https://www.prisma.io/)
 - **数据库**: [PostgreSQL](https://www.postgresql.org/)
 - **通知/提示**: [Sonner](https://sonner.emilkowal.ski/)
+- **代理支持**: [undici](https://undici.nodejs.org/) ProxyAgent
 
 ## API 端点
 
@@ -216,9 +284,32 @@ npm run dev
 
 - **会话管理**：使用 JWT (JSON Web Token) 进行安全的会话管理。
 - **密码加密**：使用 bcrypt 对用户密码进行加密存储。
+- **OAuth 2.0 认证**：支持 Google OAuth 2.0 安全登录。
 - **用户隔离**：每个用户只能访问和管理自己的密码记录。
 - **API 保护**：所有密码相关的 API 都需要用户登录后才能访问。
 - **CSRF 保护**：NextAuth.js 自动提供 CSRF 令牌保护。
+
+## 🌐 Google 登录使用说明
+
+### 用户如何使用 Google 登录
+
+1. 在登录页面，点击 **"使用 Google 账号登录"** 按钮
+2. 系统会跳转到 Google 登录页面
+3. 选择您的 Google 账号并授权
+4. 授权成功后，会自动跳转回应用主页
+5. 首次使用 Google 登录时，系统会自动创建一个新账户
+
+### Google 登录的优势
+
+- **更安全**：无需记忆额外的密码，使用 Google 的安全认证
+- **更便捷**：一键登录，无需填写注册信息
+- **账号关联**：使用相同的 Google 邮箱登录，数据会自动关联
+
+### 注意事项
+
+- 使用 Google 登录创建的账户，邮箱地址来自您的 Google 账号
+- 如果您之前使用邮箱密码注册过相同邮箱的账户，Google 登录会关联到同一账户
+- Google 登录需要网络连接到 Google 服务器
 
 ## ❓ 常见问题
 
@@ -274,6 +365,72 @@ Get-Process | Where-Object {$_.ProcessName -like "*node*"} | Stop-Process -Force
 # 或者使用其他端口
 npm run dev -- -p 3001
 ```
+
+### 5. Google 登录失败或报错
+
+**问题**：点击 Google 登录按钮后出现错误，如 `TypeError: fetch failed`。
+
+**最常见原因**：网络无法访问 Google 服务器（特别是在中国大陆）或代理配置不正确。
+
+**✅ 已解决方案**：
+
+本项目已集成完整的代理支持，使用 `undici` 的 `ProxyAgent`。
+
+**配置步骤**：
+
+a. **启动 V2rayN（管理员模式）**
+   - 右键 V2rayN.exe → 以管理员身份运行
+   - 或在属性中设置"始终以管理员身份运行"
+
+b. **配置 V2rayN**
+   - 系统代理 → 自动配置系统代理
+   - 路由 → 全局(Global)
+   - 确保已连接到服务器节点
+
+c. **测试代理**
+   ```powershell
+   npm run test:proxy
+   ```
+   应该看到所有测试通过（✓）
+
+d. **启动开发服务器**
+   ```powershell
+   npm run dev
+   ```
+
+**技术原理**：
+- 使用 `undici` 的 `ProxyAgent` + `dispatcher` 参数
+- 这是 Node.js 18+ 原生 fetch 支持代理的唯一可靠方法
+- 自动跳过本地请求（localhost, 127.0.0.1, 192.168.*）
+
+e. **端口配置问题**
+   - 如果开发服务器使用了 3001 端口，运行修复脚本：
+   ```bash
+   powershell -ExecutionPolicy Bypass -File fix-google-oauth.ps1
+   ```
+   - 然后在 Google Cloud Console 中添加重定向 URI：
+   - `http://localhost:3001/api/auth/callback/google`
+
+c. **重定向 URI 不匹配**
+   - 在 Google Cloud Console 中，确保添加了正确的重定向 URI
+   - 开发环境：`http://localhost:3000/api/auth/callback/google`（或 3001）
+   - 生产环境：`https://yourdomain.com/api/auth/callback/google`
+
+d. **Google Cloud 项目配置问题**
+   - 确保已启用 Google+ API 或 Google People API
+   - 检查 OAuth 同意屏幕是否已配置
+   - 确认应用状态不是"测试中"，或者您的 Google 账号在测试用户列表中
+
+e. **环境变量未加载**
+   ```bash
+   # 停止开发服务器，删除 .next 缓存，重新启动
+   Remove-Item -Path ".next" -Recurse -Force
+   npm run dev
+   ```
+
+**详细故障排除**：请查看 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 文件。
+
+**临时方案**：如果 Google 登录无法使用，您仍然可以使用邮箱密码方式注册和登录。
 
 ## 🎯 展望
 
