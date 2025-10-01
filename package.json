@@ -6,6 +6,8 @@
     "dev": "node -r ./proxy-setup.js node_modules/next/dist/bin/next dev --turbopack",
     "dev:no-proxy": "next dev --turbopack",
     "test:proxy": "node test-proxy.js",
+    "check-users": "node check-users.js",
+    "fix-google-users": "node fix-existing-google-users.js",
     "build": "next build --turbopack",
     "start": "next start"
   },
